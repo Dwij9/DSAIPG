@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024. Robin Hillyard
- */
-
 package com.phasmidsoftware.dsaipg.sort.elementary;
 
 import java.util.Comparator;
@@ -43,7 +39,9 @@ public class InsertionSortBasic<S> {
      * @param to   one more than the highest index of the partition to be sorted.
      */
     public void sort(S[] a, int from, int to) {
-        for (int i = from + 1; i < to; i++) insert(a, from, i);
+        for (int i = from + 1; i < to; i++) {
+            insert(a, from, i); // Call the insert function for each element
+        }
     }
 
     /**
@@ -65,12 +63,20 @@ public class InsertionSortBasic<S> {
      * @param i    the index of the transitional element.
      */
     void insert(S[] a, int from, int i) {
-        // TO BE IMPLEMENTED  : implement inner loop of insertion sort using comparator
-        // END SOLUTION
+        S key = a[i]; // The element to be inserted into the sorted portion
+        int j = i - 1;
+
+        // Move elements of a[from..i-1] that are greater than key to one position ahead
+        // of their current position
+        while (j >= from && comparator.compare(a[j], key) > 0) {
+            a[j + 1] = a[j]; // Shift the element to the right
+            j--;
+        }
+        a[j + 1] = key; // Place the key into the correct position
     }
 
-    private void swap(Object[] a, int j, int i) {
-        Object temp = a[j];
+    private void swap(S[] a, int j, int i) {
+        S temp = a[j];
         a[j] = a[i];
         a[i] = temp;
     }

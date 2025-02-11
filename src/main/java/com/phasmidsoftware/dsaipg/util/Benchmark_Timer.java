@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2018-2024. Robin Hillyard
- */
-
 package com.phasmidsoftware.dsaipg.util;
 
 import java.util.function.Consumer;
@@ -74,6 +70,9 @@ public class Benchmark_Timer<T> implements Benchmark<T> {
      * @param fPost       a Consumer function (i.e. a function of T => Void).
      */
     public Benchmark_Timer(String description, UnaryOperator<T> fPre, Consumer<T> fRun, Consumer<T> fPost) {
+        if (description == null || fRun == null) {
+            throw new IllegalArgumentException("Description and fRun cannot be null");
+        }
         this.description = description;
         this.fPre = fPre;
         this.fRun = fRun;

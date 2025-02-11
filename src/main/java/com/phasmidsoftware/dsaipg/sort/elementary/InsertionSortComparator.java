@@ -22,6 +22,7 @@ import static com.phasmidsoftware.dsaipg.sort.InstrumentedComparatorHelper.getRu
  * @param <X> the type of elements to be sorted, which can be compared using a provided comparator.
  */
 public class InsertionSortComparator<X> extends SortWithHelper<X> {
+
     /**
      * Constructor for InsertionSortComparator, which initializes the comparator with the provided helper.
      *
@@ -65,8 +66,27 @@ public class InsertionSortComparator<X> extends SortWithHelper<X> {
     public void sort(X[] xs, int from, int to) {
         final Helper<X> helper = getHelper();
 
-        // TO BE IMPLEMENTED 
-throw new RuntimeException("implementation missing");
+        // Loop over the array from `from` to `to` (exclusive).
+        for (int i = from + 1; i < to; i++) {
+            X key = xs[i];  // The element to be inserted.
+            int j = i - 1;  // The index where the key is to be inserted.
+
+            // Find the correct position for the key by comparing with previous elements.
+            while (j >= from && helper.compare(xs[j], key) > 0) {
+                // Swap if necessary (this is for insertion sort).
+                if (j > 0 && helper.compare(xs[j], key) > 0) {
+                    // Instrumentation: Continue the loop if a swap occurs.
+                    xs[j + 1] = xs[j];
+                    j--;
+                } else {
+                    // If no swap was needed, break out of the loop.
+                    break;
+                }
+            }
+
+            // Insert the key in its correct position.
+            xs[j + 1] = key;
+        }
     }
 
     public static final String DESCRIPTION = "Insertion sort";
@@ -113,5 +133,4 @@ throw new RuntimeException("implementation missing");
             return helper.getFixes();
         }
     }
-
 }
