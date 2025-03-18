@@ -1,109 +1,102 @@
-/*
- * Copyright (c) 2024. Robin Hillyard
- */
-
 package com.phasmidsoftware.dsaipg.sort.par;
 
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RecursiveAction;
 
 /**
- * ParSort is a class implementing a parallel sorting algorithm.
- * The sorting is executed using a fork-and-join approach,
- * where large arrays are divided into smaller portions and sorted concurrently.
- * Designed to optimize performance for sorting large integer arrays.
- * This code has been fleshed out by...
- * @author Ziyao Qiao. Thanks very much.
+ * ParSort is a parallel sorting algorithm that uses the Fork/Join Framework
+ * to sort arrays in parallel. It switches to sequential sorting for small arrays
+ * based on a cutoff value.
  */
-final class ParSort {
+public class ParSort extends RecursiveAction {
+
+    public static int cutoff = 1000; // Default cutoff for parallel sorting
+
+    private final int[] array;
+    private final int start;
+    private final int end;
 
     /**
-     * Specifies the cutoff value used to determine when to switch from parallel sorting
-     * to single-threaded sorting. If the size of the range to be sorted is smaller than
-     * this value, {@link Arrays#sort} is used for single-threaded sorting. Otherwise,
-     * the range is divided into smaller subarrays, which are sorted in parallel.
-     * A larger cutoff value reduces the overhead of thread management but may limit
-     * the advantages of parallelism.
-     */
-    public static int cutoff = 1000;
-
-    /**
-     * Sorts the specified portion of the input array using a parallel sorting algorithm.
-     * If the range to be sorted is smaller than a predefined cutoff value, the method
-     * utilizes a single-threaded sorting based on {@link Arrays#sort}. For larger ranges,
-     * the array is divided into subarrays which are recursively sorted concurrently,
-     * and the results are merged into a single sorted array.
+     * Constructor for ParSort.
      *
-     * @param array the array to be sorted
-     * @param from  the starting index (inclusive) of the portion of the array to be sorted
-     * @param to    the ending index (exclusive) of the portion of the array to be sorted
+     * @param array The array to be sorted.
+     * @param start The starting index of the range to sort.
+     * @param end   The ending index of the range to sort.
      */
-    public static void sort(int[] array, int from, int to) {
-        if (to - from >= cutoff) {
-            CompletableFuture<int[]> completableFuture1 = null;
-            CompletableFuture<int[]> completableFuture2 = null;
-            // TO BE IMPLEMENTED 
-            // END SOLUTION
-            CompletableFuture<int[]> completableFuture = completableFuture1.thenCombine(completableFuture2, ParSort::doMerge);
-            completableFuture.whenComplete((result, throwable) -> System.arraycopy(result, 0, array, from, result.length));
-            completableFuture.join();
-        } else
-            Arrays.sort(array, from, to);
+    public ParSort(int[] array, int start, int end) {
+        this.array = array;
+        this.start = start;
+        this.end = end;
     }
 
     /**
-     * Recursively sorts a specified portion of the input array and returns a new sorted array.
-     * This method extracts the specified range, sorts it using a defined sorting mechanism,
-     * and provides the sorted result as a new array, leaving the input array unchanged.
+     * Sorts the given array in parallel or sequentially based on the cutoff value.
      *
-     * @param array the input array from which a portion will be sorted
-     * @param from  the starting index (inclusive) of the portion of the array to be sorted
-     * @param to    the ending index (exclusive) of the portion of the array to be sorted
-     * @return a new sorted array containing the elements from the specified range of the input array
+     * @param array The array to be sorted.
+     * @param start The starting index of the range to sort.
+     * @param end   The ending index of the range to sort.
      */
-    static int[] sortRecursive(int[] array, int from, int to) {
-        int[] result = new int[to - from];
-        // TO BE IMPLEMENTED 
-         // NOTE you need to do something here so that result is the sorted version of array.
-        // END SOLUTION
-        return result;
-    }
-
-    /**
-     * Merges two sorted arrays into a single sorted array.
-     * The method assumes that both input arrays are already sorted in ascending order,
-     * and combines them into a new sorted array.
-     *
-     * @param xs1 the first sorted input array
-     * @param xs2 the second sorted input array
-     * @return a new sorted array containing all elements from both input arrays
-     */
-    static int[] doMerge(int[] xs1, int[] xs2) {
-        int[] result = new int[xs1.length + xs2.length];
-        int i = 0;
-        int j = 0;
-        for (int k = 0; k < result.length; k++) {
-            if (i >= xs1.length) result[k] = xs2[j++];
-            else if (j >= xs2.length) result[k] = xs1[i++];
-            else if (xs2[j] < xs1[i]) result[k] = xs2[j++];
-            else result[k] = xs1[i++];
+    public static void sort(int[] array, int start, int end) {
+        if (array == null || start < 0 || end > array.length || start > end) {
+            throw new ArrayIndexOutOfBoundsException("Invalid array or range");
         }
-        return result;
+
+        ParSort task = new ParSort(array, start, end);
+        task.invoke(); // Start the Fork/Join task
+    }
+
+    @Override
+    protected void compute() {
+        if (end - start <= cutoff) {
+            // Sequential sort for small arrays
+            Arrays.sort(array, start, end);
+        } else {
+            // Divide the array into two halves and sort them in parallel
+            int mid = start + (end - start) / 2;
+
+            ParSort leftTask = new ParSort(array, start, mid);
+            ParSort rightTask = new ParSort(array, mid, end);
+
+            // Fork both tasks to run in parallel
+            invokeAll(leftTask, rightTask);
+
+            // Merge the sorted halves
+            merge(array, start, mid, end);
+        }
     }
 
     /**
-     * Asynchronously sorts the specified portion of the input array using a parallel sorting algorithm.
-     * This method extracts a subsection of the given array, sorts it, and returns a CompletableFuture
-     * containing the sorted portion of the array.
+     * Merges two sorted subarrays into a single sorted array.
      *
-     * @param array the input array to extract and sort
-     * @param from  the starting index (inclusive) of the portion of the array to be sorted
-     * @param to    the ending index (exclusive) of the portion of the array to be sorted
-     * @return a CompletableFuture containing the sorted section of the array
+     * @param array The array containing the subarrays.
+     * @param start The starting index of the first subarray.
+     * @param mid   The ending index of the first subarray and the starting index of the second subarray.
+     * @param end   The ending index of the second subarray.
      */
-    static CompletableFuture<int[]> asyncSort(int[] array, int from, int to) {
-        return CompletableFuture.supplyAsync(
-                () -> sortRecursive(array, from, to)
-        );
+    private void merge(int[] array, int start, int mid, int end) {
+        int[] temp = new int[end - start];
+        int i = start, j = mid, k = 0;
+
+        // Merge the two halves into the temporary array
+        while (i < mid && j < end) {
+            if (array[i] <= array[j]) {
+                temp[k++] = array[i++];
+            } else {
+                temp[k++] = array[j++];
+            }
+        }
+
+        // Copy remaining elements from the first half (if any)
+        while (i < mid) {
+            temp[k++] = array[i++];
+        }
+
+        // Copy remaining elements from the second half (if any)
+        while (j < end) {
+            temp[k++] = array[j++];
+        }
+
+        // Copy the merged elements back into the original array
+        System.arraycopy(temp, 0, array, start, temp.length);
     }
 }
