@@ -9,15 +9,6 @@ import com.phasmidsoftware.dsaipg.util.config.Config;
 import java.util.Arrays;
 
 import static com.phasmidsoftware.dsaipg.util.config.Config_Benchmark.*;
-
-/**
- * A generic implementation of the MergeSort algorithm for sorting elements of type X,
- * where X extends Comparable<X>. This class provides optimized sorting techniques such as
- * insurance and no-copy optimizations, offering scalable sorting solutions. It makes use of
- * a helper class for monitoring and performing additional utilities during the sorting process.
- *
- * @param <X> The type of elements to be sorted, which must implement the Comparable interface.
- */
 public class MergeSort<X extends Comparable<X>> extends SortWithComparableHelper<X> {
 
     public static final String DESCRIPTION = "MergeSort";
@@ -81,8 +72,8 @@ public class MergeSort<X extends Comparable<X>> extends SortWithComparableHelper
 
     /**
      * Sets the memory for the array if it hasn't been set previously.
-     * If `arrayMemory` has not been initialized (i.e., equals -1), it sets its value to `n`.
-     * Additionally, allocates and updates additional memory using the `additionalMemory` method.
+     * If arrayMemory has not been initialized (i.e., equals -1), it sets its value to n.
+     * Additionally, allocates and updates additional memory using the additionalMemory method.
      *
      * @param n the amount of memory to be set for the array.
      */
@@ -139,13 +130,31 @@ public class MergeSort<X extends Comparable<X>> extends SortWithComparableHelper
         Config config = helper.getConfig();
         boolean insurance = config.getBoolean(MERGESORT, INSURANCE);
         boolean noCopy = config.getBoolean(MERGESORT, NOCOPY);
-        if (to <= from + helper.cutoff()) { // XXX check that a cutoff value of 1 effectively stops the cutoff mechanism.
+
+        // If subarray is at or below the insertion-sort cutoff, do insertion sort:
+        if (to - from <= helper.cutoff()) {
             insertionSort.sort(a, from, to);
             return;
         }
 
-        // TO BE IMPLEMENTED  : implement merge sort with insurance and no-copy optimizations
-throw new RuntimeException("implementation missing");
+        int mid = from + (to - from) / 2;
+        sort(a, aux, from, mid);
+        sort(a, aux, mid, to);
+
+        // If insurance is enabled and a[mid-1] <= a[mid], skip the merge.
+        if (insurance && helper.less(a, mid - 1, mid)) {
+            return;
+        }
+
+        // Merge from a[] into aux[]:
+        merge(a, aux, from, mid, to);
+
+        // Copy merged result from aux[] back to a[]:
+        System.arraycopy(aux, from, a, from, to - from);
+
+        // ***** Add instrumentation for that final copy: *****
+        helper.incrementCopies(to - from);
+        helper.incrementHits(2L * (to - from));
     }
 
     /**
@@ -169,14 +178,18 @@ throw new RuntimeException("implementation missing");
             if (i >= mid) {
                 helper.copy(w, result, k);
                 if (++j < to) w = helper.get(sorted, j);
-            } else if (j >= to) {
+            }
+            else if (j >= to) {
                 helper.copy(v, result, k);
                 if (++i < mid) v = helper.get(sorted, i);
-            } else if (helper.less(w, v)) {
+            }
+            else if (helper.less(w, v)) {
+                // For insurance, we do the fix count:
                 helper.incrementFixes(mid - i);
                 helper.copy(w, result, k);
                 if (++j < to) w = helper.get(sorted, j);
-            } else {
+            }
+            else {
                 helper.copy(v, result, k);
                 if (++i < mid) v = helper.get(sorted, i);
             }
