@@ -5,6 +5,7 @@
 package com.phasmidsoftware.dsaipg.adt.threesum;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -23,6 +24,7 @@ public class ThreeSumQuadratic implements ThreeSum {
      * @param a a sorted array.
      */
     public ThreeSumQuadratic(int[] a) {
+        Arrays.sort(a);
         this.a = a;
         length = a.length;
     }
@@ -36,7 +38,7 @@ public class ThreeSumQuadratic implements ThreeSum {
      */
     public Triple[] getTriples() {
         List<Triple> triples = new ArrayList<>();
-        for (int i = 0; i < length; i++) triples.addAll(getTriples(i));
+        for (int i = 0; i < length; i++) triples.addAll(this.getTriples(i));
         Collections.sort(triples);
         return triples.stream().distinct().toArray(Triple[]::new);
     }
@@ -45,30 +47,49 @@ public class ThreeSumQuadratic implements ThreeSum {
      * Get a list of Triples such that the middle index is the given value j.
      *
      * @param j the index of the middle value.
-     * @return a list of Triples such that the sum of each Triple is zero.
+     * @return a Triple such that
      */
     List<Triple> getTriples(int j) {
         List<Triple> triples = new ArrayList<>();
-        int left = 0;
-        int right = length - 1;
+        int target = -1 * a[j];
 
-        // Skip the current j index and start with the outer indices.
-        while (left < j && right > j) {
-            int sum = a[left] + a[right] + a[j];
-            if (sum == 0) {
-                triples.add(new Triple(a[left], a[j], a[right]));
-                // Move both pointers to avoid duplicate triplets
-                while (left < j && a[left] == a[left + 1]) left++;
-                while (right > j && a[right] == a[right - 1]) right--;
+        int left = 0;
+        int right = length-1;
+        while(left < right) {
+            if (left == j) {
+                left++; // Skip the fixed middle element
+                continue;
+            }
+            if (right == j) {
+                right--; // Skip the fixed middle element
+                continue;
+            }
+            int sum = a[left] + a[right];
+            if(sum == target) {
+                Triple triple = sort(a[left], a[right], a[j]);
+                triples.add(triple);
                 left++;
                 right--;
-            } else if (sum < 0) {
-                left++;
-            } else {
+            }
+            else if(sum > target) {
                 right--;
+            }else {
+                left++;
             }
         }
         return triples;
+        // TO BE IMPLEMENTED  : for each candidate, test if a[i] + a[j] + a[k] = 0.
+//        throw new RuntimeException("implementation missing");
+    }
+
+    private Triple sort(int smallest, int middle, int largest) {
+        int[] arr = new int[3];
+        arr[0] = smallest;
+        arr[1] = middle;
+        arr[2] = largest;
+
+        Arrays.sort(arr);
+        return new Triple(arr[0], arr[1], arr[2]);
     }
 
     private final int[] a;
